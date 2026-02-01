@@ -219,7 +219,7 @@ end
   say "Setting up tests...", :green
 
   # Add Devise and FactoryBot helpers to test_helper.rb
-  inject_into_file "test/test_helper.rb", after: "class ActiveSupport::TestCase\n" do
+  inject_into_file "test/test_helper.rb", after: "class TestCase\n" do
     <<-RUBY
   # Devise test helpers for integration tests
   include Devise::Test::IntegrationHelpers
