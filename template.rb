@@ -2,7 +2,7 @@
 # Authentication: Devise
 # Authorization: Pundit (policy-based)
 # CSS: Tailwind CSS
-# Testing: Minitest (Rails default)
+# Testing: Minitest with FactoryBot
 #
 # Usage:
 #   rails new myapp -m /path/to/template.rb
@@ -16,8 +16,12 @@ gem "devise"
 gem "pundit"
 gem "tailwindcss-rails"
 
+gem_group :development, :test do
+  gem "factory_bot_rails"
+end
+
 # =============================================================================
-# Phase 2-5: After Bundle Setup
+# Phase 2-6: After Bundle Setup
 # =============================================================================
 
 after_bundle do
@@ -64,14 +68,14 @@ after_bundle do
   end
 
   # ===========================================================================
-  # Phase 2.5: Tailwind CSS Setup
+  # Phase 3: Tailwind CSS Setup
   # ===========================================================================
 
   say "Installing Tailwind CSS...", :green
   rails_command "tailwindcss:install"
 
   # ===========================================================================
-  # Phase 3: Pundit Setup
+  # Phase 4: Pundit Setup
   # ===========================================================================
 
   say "Installing Pundit...", :green
@@ -209,32 +213,42 @@ end
   RUBY
 
   # ===========================================================================
-  # Phase 4: Testing Setup
+  # Phase 5: Testing Setup
   # ===========================================================================
 
   say "Setting up tests...", :green
 
-  # Add Devise test helpers to test_helper.rb
+  # Add Devise and FactoryBot helpers to test_helper.rb
   inject_into_file "test/test_helper.rb", after: "class ActiveSupport::TestCase\n" do
     <<-RUBY
   # Devise test helpers for integration tests
   include Devise::Test::IntegrationHelpers
 
+  # FactoryBot methods (create, build, build_stubbed, attributes_for)
+  include FactoryBot::Syntax::Methods
+
     RUBY
   end
 
-  # Create fixtures for users with different roles
-  create_file "test/fixtures/users.yml", <<-YAML
-regular_user:
-  email: user@example.com
-  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
-  role: 0
+  # Create factories directory
+  empty_directory "test/factories"
 
-admin_user:
-  email: admin@example.com
-  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
-  role: 1
-  YAML
+  # Create User factory
+  create_file "test/factories/users.rb", force: true do
+    <<-RUBY
+FactoryBot.define do
+  factory :user do
+    sequence(:email) { |n| "user\#{n}@example.com" }
+    password { "password123" }
+    role { :user }
+
+    trait :admin do
+      role { :admin }
+    end
+  end
+end
+    RUBY
+  end
 
   # Create policies test directory
   empty_directory "test/policies"
@@ -247,9 +261,9 @@ require "test_helper"
 
 class ApplicationPolicyTest < ActiveSupport::TestCase
   def setup
-    @user = users(:regular_user)
-    @admin = users(:admin_user)
-    @record = @user # Using user as a sample record
+    @user = create(:user)
+    @admin = create(:user, :admin)
+    @record = @user
   end
 
   test "admin? returns true for admin users" do
@@ -289,8 +303,8 @@ require "test_helper"
 
 class UserPolicyTest < ActiveSupport::TestCase
   def setup
-    @user = users(:regular_user)
-    @admin = users(:admin_user)
+    @user = create(:user)
+    @admin = create(:user, :admin)
   end
 
   # Index tests
@@ -364,7 +378,7 @@ end
   RUBY
 
   # ===========================================================================
-  # Phase 5: Routes & Seeds
+  # Phase 6: Routes & Seeds
   # ===========================================================================
 
   say "Configuring routes and seeds...", :green
@@ -393,9 +407,12 @@ if Rails.env.development? || Rails.env.test?
 end
   RUBY
 
-  # Run migrations
+  # Run migrations and seed database
   say "Running migrations...", :green
   rails_command "db:migrate"
+
+  say "Seeding database...", :green
+  rails_command "db:seed"
 
   # ===========================================================================
   # Final Instructions
@@ -411,11 +428,11 @@ end
   say "  - Pundit (authorization)"
   say "  - Tailwind CSS (styling)"
   say "  - Minitest (testing)"
+  say "  - FactoryBot (test factories)"
   say ""
   say "Next steps:"
   say "  1. Set your root route in config/routes.rb"
-  say "  2. Run 'rails db:seed' to create the default admin user"
-  say "  3. Run 'rails test' to verify the setup"
+  say "  2. Run 'rails test' to verify the setup"
   say ""
   say "Default admin credentials (development only):"
   say "  Email: admin@example.com"

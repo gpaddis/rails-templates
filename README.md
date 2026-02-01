@@ -11,7 +11,8 @@ A complete Rails 8 application template with authentication and authorization.
 **Stack:**
 - **Authentication:** Devise
 - **Authorization:** Pundit (policy-based)
-- **Testing:** Minitest
+- **CSS:** Tailwind CSS
+- **Testing:** Minitest with FactoryBot
 
 ## Usage
 
@@ -65,9 +66,9 @@ rails new myapp -m template.rb --skip-system-test
 
 ### Testing
 
-- User fixtures with both regular and admin users
+- FactoryBot factories for user creation (with `:admin` trait)
 - Policy tests for `ApplicationPolicy` and `UserPolicy`
-- Devise test helpers integrated in `test_helper.rb`
+- Devise and FactoryBot helpers integrated in `test_helper.rb`
 
 ### Seeds
 
@@ -82,92 +83,10 @@ rails new myapp -m template.rb --skip-system-test
    root "home#index"
    ```
 
-2. **Seed the database** (creates default admin user):
-   ```bash
-   rails db:seed
-   ```
-
-3. **Run tests** to verify setup:
+2. **Run tests** to verify setup:
    ```bash
    rails test
    ```
-
-## Pundit Usage Examples
-
-### In Controllers
-
-```ruby
-class ArticlesController < ApplicationController
-  def index
-    @articles = policy_scope(Article)
-  end
-
-  def show
-    @article = Article.find(params[:id])
-    authorize @article
-  end
-
-  def create
-    @article = current_user.articles.build(article_params)
-    authorize @article
-
-    if @article.save
-      redirect_to @article
-    else
-      render :new
-    end
-  end
-end
-```
-
-### Creating New Policies
-
-```ruby
-# app/policies/article_policy.rb
-class ArticlePolicy < ApplicationPolicy
-  def index?
-    true # Anyone can view the index
-  end
-
-  def show?
-    true # Anyone can view an article
-  end
-
-  def create?
-    user.present? # Any logged-in user can create
-  end
-
-  def update?
-    admin_or_owner? # Admin or article owner
-  end
-
-  def destroy?
-    admin_or_owner?
-  end
-
-  class Scope < ApplicationPolicy::Scope
-    def resolve
-      if admin?
-        scope.all
-      else
-        scope.where(published: true).or(scope.where(user_id: user&.id))
-      end
-    end
-  end
-end
-```
-
-### In Views
-
-```erb
-<% if policy(@article).edit? %>
-  <%= link_to "Edit", edit_article_path(@article) %>
-<% end %>
-
-<% if policy(Article).create? %>
-  <%= link_to "New Article", new_article_path %>
-<% end %>
-```
 
 ## File Structure Created
 
@@ -196,12 +115,12 @@ db/
 └── seeds.rb                       # Admin user seed
 
 test/
-├── fixtures/
-│   └── users.yml                  # User fixtures
+├── factories/
+│   └── users.rb                   # User factory
 ├── policies/
 │   ├── application_policy_test.rb
 │   └── user_policy_test.rb
-└── test_helper.rb                 # Devise helpers added
+└── test_helper.rb                 # Devise & FactoryBot helpers
 ```
 
 ## Requirements
