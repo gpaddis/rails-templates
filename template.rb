@@ -1,6 +1,7 @@
 # Rails 8 Application Template
 # Authentication: Devise
 # Authorization: Pundit (policy-based)
+# CSS: Tailwind CSS
 # Testing: Minitest (Rails default)
 #
 # Usage:
@@ -13,6 +14,7 @@
 
 gem "devise"
 gem "pundit"
+gem "tailwindcss-rails"
 
 # =============================================================================
 # Phase 2-5: After Bundle Setup
@@ -53,13 +55,20 @@ after_bundle do
     <<-ERB
     <%# Flash messages %>
     <% flash.each do |type, message| %>
-      <div class="flash flash-<%= type %>">
+      <div class="<%= type == 'alert' ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700' %> px-4 py-3 rounded mb-4">
         <%= message %>
       </div>
     <% end %>
 
     ERB
   end
+
+  # ===========================================================================
+  # Phase 2.5: Tailwind CSS Setup
+  # ===========================================================================
+
+  say "Installing Tailwind CSS...", :green
+  rails_command "tailwindcss:install"
 
   # ===========================================================================
   # Phase 3: Pundit Setup
@@ -400,6 +409,7 @@ end
   say "Installed components:"
   say "  - Devise (authentication)"
   say "  - Pundit (authorization)"
+  say "  - Tailwind CSS (styling)"
   say "  - Minitest (testing)"
   say ""
   say "Next steps:"
