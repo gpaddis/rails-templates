@@ -98,49 +98,6 @@ after_bundle do
     RUBY
   end
 
-  # Create UserPolicy demonstrating role-based access
-  create_file "app/policies/user_policy.rb", <<-RUBY
-# frozen_string_literal: true
-
-class UserPolicy < ApplicationPolicy
-  def index?
-    admin?
-  end
-
-  def show?
-    admin? || user == record
-  end
-
-  def create?
-    admin?
-  end
-
-  def update?
-    admin? || user == record
-  end
-
-  def destroy?
-    admin? && user != record # Admins can delete other users, but not themselves
-  end
-
-  class Scope < ApplicationPolicy::Scope
-    def resolve
-      if user&.admin?
-        scope.all
-      else
-        scope.where(id: user.id)
-      end
-    end
-  end
-
-  private
-
-  def admin?
-    user&.admin?
-  end
-end
-  RUBY
-
   # ===========================================================================
   # Phase 5: Testing Setup
   # ===========================================================================
@@ -159,9 +116,6 @@ end
     RUBY
   end
 
-  # Create factories directory
-  empty_directory "test/factories"
-
   # Create User factory
   create_file "test/factories/users.rb", force: true do
     <<-RUBY
@@ -179,105 +133,11 @@ end
     RUBY
   end
 
-  # Create policies test directory
-  empty_directory "test/policies"
-
-  # Create UserPolicy test
-  create_file "test/policies/user_policy_test.rb", <<-RUBY
-# frozen_string_literal: true
-
-require "test_helper"
-
-class UserPolicyTest < ActiveSupport::TestCase
-  def setup
-    @user = create(:user)
-    @admin = create(:user, :admin)
-  end
-
-  # Index tests
-  test "admin can view user index" do
-    assert UserPolicy.new(@admin, User).index?
-  end
-
-  test "regular user cannot view user index" do
-    refute UserPolicy.new(@user, User).index?
-  end
-
-  # Show tests
-  test "admin can view any user" do
-    assert UserPolicy.new(@admin, @user).show?
-  end
-
-  test "user can view themselves" do
-    assert UserPolicy.new(@user, @user).show?
-  end
-
-  test "user cannot view other users" do
-    refute UserPolicy.new(@user, @admin).show?
-  end
-
-  # Create tests
-  test "admin can create users" do
-    assert UserPolicy.new(@admin, User).create?
-  end
-
-  test "regular user cannot create users" do
-    refute UserPolicy.new(@user, User).create?
-  end
-
-  # Update tests
-  test "admin can update any user" do
-    assert UserPolicy.new(@admin, @user).update?
-  end
-
-  test "user can update themselves" do
-    assert UserPolicy.new(@user, @user).update?
-  end
-
-  test "user cannot update other users" do
-    refute UserPolicy.new(@user, @admin).update?
-  end
-
-  # Destroy tests
-  test "admin can destroy other users" do
-    assert UserPolicy.new(@admin, @user).destroy?
-  end
-
-  test "admin cannot destroy themselves" do
-    refute UserPolicy.new(@admin, @admin).destroy?
-  end
-
-  test "regular user cannot destroy users" do
-    refute UserPolicy.new(@user, @admin).destroy?
-  end
-
-  # Scope tests
-  test "admin scope returns all users" do
-    scope = UserPolicy::Scope.new(@admin, User).resolve
-    assert_equal User.all.to_a, scope.to_a
-  end
-
-  test "user scope returns only themselves" do
-    scope = UserPolicy::Scope.new(@user, User).resolve
-    assert_equal [@user], scope.to_a
-  end
-end
-  RUBY
-
   # ===========================================================================
   # Phase 6: Routes & Seeds
   # ===========================================================================
 
   say "Configuring routes and seeds...", :green
-
-  # Add root route placeholder (commented out - user should set their own)
-  inject_into_file "config/routes.rb", after: "Rails.application.routes.draw do\n" do
-    <<-RUBY
-  # Define your application routes here
-  # Example: root "home#index"
-
-    RUBY
-  end
 
   # Create seeds for default admin user
   append_to_file "db/seeds.rb", <<-RUBY
@@ -319,15 +179,10 @@ end
   say ""
   say "Next steps:"
   say "  1. Set your root route in config/routes.rb"
-  say "  2. Run 'rails test' to verify the setup"
+  say "  2. Generate policies with: rails g pundit:policy <model>"
   say ""
   say "Default admin credentials (development only):"
   say "  Email: admin@example.com"
   say "  Password: password123"
-  say ""
-  say "Pundit usage in controllers:"
-  say "  authorize @resource        # Check authorization"
-  say "  policy(@resource).show?    # Query policy directly"
-  say "  policy_scope(Resource)     # Get authorized scope"
   say ""
 end
