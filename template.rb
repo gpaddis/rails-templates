@@ -6,7 +6,7 @@
 #
 # Usage:
 #   rails new myapp -m /path/to/template.rb
-#   rails new myapp -m https://raw.githubusercontent.com/gpaddis/rails-templates/main/template.rb
+#   rails new myapp -d postgresql -m /path/to/template.rb
 
 # =============================================================================
 # Phase 1: Gems
@@ -25,6 +25,36 @@ end
 # =============================================================================
 
 after_bundle do
+  # ===========================================================================
+  # PostgreSQL + Docker Setup (if -d postgresql was used)
+  # ===========================================================================
+
+  pg_detected = IO.read("Gemfile").include?('gem "pg"')
+
+  if pg_detected
+    say "PostgreSQL detected, setting up Docker Compose...", :green
+
+    create_file "docker-compose.yml", <<-YAML
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    YAML
+
+    gsub_file "config/database.yml",
+      /^(\s+pool:.*\n)/,
+      "\\1  host: localhost\n  username: postgres\n  password: postgres\n"
+  end
+
   # ===========================================================================
   # Phase 2: Devise Setup
   # ===========================================================================
@@ -154,12 +184,14 @@ if Rails.env.development? || Rails.env.test?
 end
   RUBY
 
-  # Run migrations and seed database
-  say "Running migrations...", :green
-  rails_command "db:migrate"
+  # Run migrations and seed database (skip for PostgreSQL — Docker may not be running)
+  unless pg_detected
+    say "Running migrations...", :green
+    rails_command "db:migrate"
 
-  say "Seeding database...", :green
-  rails_command "db:seed"
+    say "Seeding database...", :green
+    rails_command "db:seed"
+  end
 
   # ===========================================================================
   # Final Instructions
@@ -176,10 +208,18 @@ end
   say "  - Tailwind CSS (styling)"
   say "  - Minitest (testing)"
   say "  - FactoryBot (test factories)"
+  say "  - PostgreSQL (Docker Compose)" if pg_detected
   say ""
   say "Next steps:"
-  say "  1. Set your root route in config/routes.rb"
-  say "  2. Generate policies with: rails g pundit:policy <model>"
+  if pg_detected
+    say "  1. Run 'docker compose up -d' to start PostgreSQL"
+    say "  2. Run 'rails db:create db:migrate db:seed'"
+    say "  3. Set your root route in config/routes.rb"
+    say "  4. Generate policies with: rails g pundit:policy <model>"
+  else
+    say "  1. Set your root route in config/routes.rb"
+    say "  2. Generate policies with: rails g pundit:policy <model>"
+  end
   say ""
   say "Default admin credentials (development only):"
   say "  Email: admin@example.com"
