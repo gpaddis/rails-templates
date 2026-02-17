@@ -51,7 +51,7 @@ volumes:
     YAML
 
     gsub_file "config/database.yml",
-      /^(\s+pool:.*\n)/,
+      /^(default: &default\n  adapter: postgresql\n  encoding: unicode\n)/,
       "\\1  host: localhost\n  username: postgres\n  password: postgres\n"
   end
 
