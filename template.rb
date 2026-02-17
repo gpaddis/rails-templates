@@ -98,83 +98,6 @@ after_bundle do
     RUBY
   end
 
-  # Replace ApplicationPolicy with enhanced version
-  remove_file "app/policies/application_policy.rb"
-  create_file "app/policies/application_policy.rb", <<-RUBY
-# frozen_string_literal: true
-
-class ApplicationPolicy
-  attr_reader :user, :record
-
-  def initialize(user, record)
-    @user = user
-    @record = record
-  end
-
-  def index?
-    false
-  end
-
-  def show?
-    false
-  end
-
-  def create?
-    false
-  end
-
-  def new?
-    create?
-  end
-
-  def update?
-    false
-  end
-
-  def edit?
-    update?
-  end
-
-  def destroy?
-    false
-  end
-
-  private
-
-  # Role-based helper methods
-  def admin?
-    user&.admin?
-  end
-
-  def owner?
-    record.respond_to?(:user_id) && record.user_id == user&.id
-  end
-
-  def admin_or_owner?
-    admin? || owner?
-  end
-
-  class Scope
-    def initialize(user, scope)
-      @user = user
-      @scope = scope
-    end
-
-    def resolve
-      raise NoMethodError, "You must define #resolve in \#{self.class}"
-    end
-
-    private
-
-    attr_reader :user, :scope
-
-    def admin?
-      user&.admin?
-    end
-  end
-end
-  RUBY
-
   # Create UserPolicy demonstrating role-based access
   create_file "app/policies/user_policy.rb", <<-RUBY
 # frozen_string_literal: true
@@ -202,12 +125,18 @@ class UserPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      if admin?
+      if user&.admin?
         scope.all
       else
         scope.where(id: user.id)
       end
     end
+  end
+
+  private
+
+  def admin?
+    user&.admin?
   end
 end
   RUBY
@@ -252,48 +181,6 @@ end
 
   # Create policies test directory
   empty_directory "test/policies"
-
-  # Create ApplicationPolicy test
-  create_file "test/policies/application_policy_test.rb", <<-RUBY
-# frozen_string_literal: true
-
-require "test_helper"
-
-class ApplicationPolicyTest < ActiveSupport::TestCase
-  def setup
-    @user = create(:user)
-    @admin = create(:user, :admin)
-    @record = @user
-  end
-
-  test "admin? returns true for admin users" do
-    policy = ApplicationPolicy.new(@admin, @record)
-    assert policy.send(:admin?)
-  end
-
-  test "admin? returns false for regular users" do
-    policy = ApplicationPolicy.new(@user, @record)
-    refute policy.send(:admin?)
-  end
-
-  test "admin? returns false when user is nil" do
-    policy = ApplicationPolicy.new(nil, @record)
-    refute policy.send(:admin?)
-  end
-
-  test "default policy methods return false" do
-    policy = ApplicationPolicy.new(@user, @record)
-
-    refute policy.index?
-    refute policy.show?
-    refute policy.create?
-    refute policy.new?
-    refute policy.update?
-    refute policy.edit?
-    refute policy.destroy?
-  end
-end
-  RUBY
 
   # Create UserPolicy test
   create_file "test/policies/user_policy_test.rb", <<-RUBY
